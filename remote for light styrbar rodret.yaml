@@ -1,0 +1,140 @@
+blueprint:
+  domain: automation
+  name: IKEA STYRBAR RODRET - remote for light
+
+  input:
+    remote:
+      name: IKEA Remote
+      description: STYRBAR or RODRET
+      selector:
+        device:
+          filter:
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: Remote Control N2
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: RODRET Dimmer
+
+    light:
+      name: Lights
+      selector:
+        target:
+          entity:
+            domain: light
+
+    brightness:
+      name: Light Start up Brightness
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+
+    transition:
+      name: Light On/Off Transition
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.25
+          unit_of_measurement: "s"
+
+    button_one:
+      name: Button One
+      description: STYRBAR only
+      default: []
+      selector:
+        action: null
+
+    button_two:
+      name: Button Two
+      description: STYRBAR only
+      default: []
+      selector:
+        action: null
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: event
+    event_type: zha_event
+    event_data:
+      device_id: !input remote
+
+action:
+  - variables:
+      cluster_id: "{{ trigger.event.data.cluster_id }}"
+      command: "{{ trigger.event.data.command }}"
+      args: "{{ trigger.event.data.args }}"
+
+  - choose:
+
+        # light turn on
+      - conditions:
+          - "{{ cluster_id == 6 }}"
+          - "{{ command == 'on' }}"
+        sequence:
+          - service: light.turn_on
+            target: !input light
+            data:
+              brightness_pct: !input brightness
+              transition: !input transition
+
+        # light turn off
+      - conditions:
+          - "{{ cluster_id == 6 }}"
+          - "{{ command == 'off' }}"
+        sequence:
+          - service: light.turn_off
+            target: !input light
+            data:
+              transition: !input transition
+
+        # light increase brightness
+      - conditions:
+          - "{{ cluster_id == 8 }}"
+          - "{{ command == 'move_with_on_off' }}"
+        sequence:
+          - repeat:
+              count: 20
+              sequence:
+                - service: light.turn_on
+                  target: !input light
+                  data:
+                    brightness_step_pct: 5
+                    transition: 0
+                - delay: 0.1
+
+        # light decrease brightness
+      - conditions:
+          - "{{ cluster_id == 8 }}"
+          - "{{ command == 'move' }}"
+        sequence:
+          - repeat:
+              count: 20
+              sequence:
+                - service: light.turn_on
+                  target: !input light
+                  data:
+                    brightness_step_pct: -5
+                    transition: 0
+                - delay: 0.1
+
+        # button one
+      - conditions:
+          - "{{ cluster_id == 5 }}"
+          - "{{ command == 'press' }}"
+          - "{{ args == [257, 13, 0] }}"
+        sequence: !input button_one
+
+        # button two
+      - conditions:
+          - "{{ cluster_id == 5 }}"
+          - "{{ command == 'press' }}"
+          - "{{ args == [256, 13, 0] }}"
+        sequence: !input button_two

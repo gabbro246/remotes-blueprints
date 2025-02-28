@@ -1,0 +1,54 @@
+blueprint:
+  domain: automation
+  name: IKEA RODRET - remote for switch
+
+  input:
+    remote:
+      name: IKEA Remote
+      description: RODRET
+      selector:
+        device:
+          filter:
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: RODRET Dimmer
+
+    switch:
+      name: Switches
+      selector:
+        target:
+          entity:
+            domain: switch
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: event
+    event_type: zha_event
+    event_data:
+      device_id: !input remote
+
+action:
+  - variables:
+      cluster_id: "{{ trigger.event.data.cluster_id }}"
+      command: "{{ trigger.event.data.command }}"
+      args: "{{ trigger.event.data.args }}"
+
+  - choose:
+
+        # switch turn on
+      - conditions:
+          - "{{ cluster_id == 6 }}"
+          - "{{ command == 'on' }}"
+        sequence:
+          - service: switch.turn_on
+            target: !input switch
+
+        # switch turn off
+      - conditions:
+          - "{{ cluster_id == 6 }}"
+          - "{{ command == 'off' }}"
+        sequence:
+          - service: switch.turn_off
+            target: !input switch

@@ -1,0 +1,67 @@
+blueprint:
+  domain: automation
+  name: IKEA SOMRIG - remote for cover
+  description: Inspired by Malte/zha-ikea-four-button-remote-styrbar-for-lights-e2001-e2002.yaml
+
+  input:
+    remote:
+      name: IKEA Remote
+      description: SOMRIG are supported
+      selector:
+        device:
+          filter:
+            - integration: zha
+              manufacturer: IKEA of Sweden
+              model: SOMRIG shortcut button
+
+    cover:
+      name: Cover to control
+      selector:
+        target:
+          entity:
+            domain: cover
+
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: event
+    event_type: zha_event
+    event_data:
+      device_id: !input remote
+
+action:
+  - variables:
+      endpoint_id: "{{ trigger.event.data.endpoint_id }}"
+      cluster_id: "{{ trigger.event.data.cluster_id }}"
+      command: "{{ trigger.event.data.command }}"
+      args: "{{ trigger.event.data.args }}"
+
+  - choose:
+
+        # open
+      - conditions:
+          - "{{ endpoint_id == 1 }}"
+          - "{{ cluster_id == 64640 }}"
+          - "{{ command == 'initial_press' }}"
+        sequence:
+          - service: cover.open_cover
+            target: !input cover
+
+        # close
+      - conditions:
+          - "{{ endpoint_id == 2 }}"
+          - "{{ cluster_id == 64640 }}"
+          - "{{ command == 'initial_press' }}"
+        sequence:
+          - service: cover.close_cover
+            target: !input cover
+
+        # long press stop
+      - conditions:
+          - "{{ cluster_id == 64640 }}"
+          - "{{ command == 'long_release' }}"
+        sequence:
+          - service: cover.stop_cover
+            target: !input cover
