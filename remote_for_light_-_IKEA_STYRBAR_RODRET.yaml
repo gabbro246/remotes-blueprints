@@ -43,19 +43,26 @@ blueprint:
           step: 0.25
           unit_of_measurement: "s"
 
+    after_turn_on:
+      name: After Turn On
+      description: Actions to run after the light.turn_on step
+      default: []
+      selector:
+        action: {}
+
     button_one:
       name: Button One
       description: STYRBAR only
       default: []
       selector:
-        action: null
+        action: {}
 
     button_two:
       name: Button Two
       description: STYRBAR only
       default: []
       selector:
-        action: null
+        action: {}
 
 mode: restart
 max_exceeded: silent
@@ -84,6 +91,9 @@ action:
             data:
               brightness_pct: !input brightness
               transition: !input transition
+          - choose: []
+            default: !input after_turn_on
+
 
         # light turn off
       - conditions:
